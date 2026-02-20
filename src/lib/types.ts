@@ -20,6 +20,7 @@ export interface Project {
     efficiency: number;
     codeQuality: number;
     testCoverage: number;
+    healthScore: number; // 0-100
   };
 }
 
@@ -34,6 +35,11 @@ export interface User {
   createdAt: string;
   lastLogin?: string;
   isActive: boolean;
+  metadata?: {
+    burnoutLevel: number; // 0-100
+    contextSwitchingRate: number; // tasks/day
+    expertise: string[]; // Areas of codebase they know best
+  };
 }
 
 export interface Session {
@@ -53,13 +59,6 @@ export interface PasswordReset {
   used: boolean;
 }
 
-export interface AttendanceRecord {
-  id: string;
-  userId: string;
-  date: string;
-  status: 'present' | 'absent' | 'excused';
-  timestamp: string;
-}
 
 export interface Resource {
   id: string;
@@ -94,10 +93,13 @@ export interface TeamMessage {
   id: string;
   projectId: string;
   author: string;
+  senderName: string;
   content: string;
   timestamp: string;
+  source: 'slack' | 'discord' | 'github' | 'internal';
   sentiment?: 'positive' | 'neutral' | 'negative' | 'frustrated';
   keywords?: string[];
+  isDecision?: boolean; // Flag if AI thinks this is a key decision
 }
 
 export interface IntelligenceReport {
@@ -118,6 +120,31 @@ export interface IntelligenceReport {
     indicators: string[];
   };
   recommendations: Recommendation[];
+  vibeCheck: {
+    summary: string;
+    focusArea: string;
+    riskTrend: 'up' | 'down' | 'stable';
+  };
+  decisionLog: DecisionLog[];
+  nudges: Nudge[];
+}
+
+export interface Nudge {
+  id: string;
+  type: 'action' | 'context' | 'praise';
+  message: string;
+  target?: string; // e.g. "@dev_lead"
+  link?: string;
+  timestamp: string;
+}
+
+export interface DecisionLog {
+  id: string;
+  title: string;
+  context: string;
+  sourceMessageId: string;
+  timestamp: string;
+  syncedToTask: boolean;
 }
 
 export interface Alert {
@@ -166,5 +193,4 @@ export interface DB {
   projects: Project[];
   insights: Insight[];
   users?: User[];
-  attendance?: AttendanceRecord[];
 }

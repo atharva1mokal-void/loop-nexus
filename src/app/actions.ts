@@ -94,7 +94,8 @@ export async function createProject(formData: FormData) {
         stats: {
             efficiency: 85,
             codeQuality: 90,
-            testCoverage: 0
+            testCoverage: 0,
+            healthScore: 88
         }
     };
 
@@ -125,7 +126,7 @@ export async function removeProject(projectId: string) {
     revalidatePath('/admin');
 }
 
-export async function updateProjectStats(projectId: string, newStats: { efficiency: number; codeQuality: number; testCoverage: number }) {
+export async function updateProjectStats(projectId: string, newStats: { efficiency: number; codeQuality: number; testCoverage: number; healthScore: number }) {
     const projects = await getProjects();
     const project = projects.find(p => p.id === projectId);
 
@@ -135,7 +136,7 @@ export async function updateProjectStats(projectId: string, newStats: { efficien
         await addInsight({
             id: Math.random().toString(36).substr(2, 9),
             type: 'info',
-            message: `Project "${project.name}" metrics updated: Efficiency ${newStats.efficiency}%, Quality ${newStats.codeQuality}%, Coverage ${newStats.testCoverage}%`,
+            message: `Project "${project.name}" metrics updated: Health ${newStats.healthScore}%, Efficiency ${newStats.efficiency}%, Quality ${newStats.codeQuality}%, Coverage ${newStats.testCoverage}%`,
             timestamp: new Date().toISOString()
         });
 
@@ -197,7 +198,7 @@ export async function calculateProjectProgress(projectId: string, workLog: any) 
 }
 
 export async function generateIntelligenceReport(projectId: string) {
-    const { generateIntelligenceReport: generate } = await import('@/lib/ai-analyzer');
+    const { generateIntelligenceReport: generate } = await import('@/lib/analyzer-logic');
     const projects = await getProjects();
     const project = projects.find(p => p.id === projectId);
 
@@ -208,17 +209,21 @@ export async function generateIntelligenceReport(projectId: string) {
                 id: '1',
                 projectId,
                 author: 'dev_lead',
+                senderName: 'Lead Dev',
                 content: 'Completed API integration. Working smoothly now!',
                 timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-                sentiment: 'positive' as const
+                sentiment: 'positive' as const,
+                source: 'internal' as const
             },
             {
                 id: '2',
                 projectId,
                 author: 'client_alpha',
+                senderName: 'Alpha Corp Rep',
                 content: 'Stuck on the database migration, need help',
                 timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-                sentiment: 'frustrated' as const
+                sentiment: 'frustrated' as const,
+                source: 'internal' as const
             }
         ];
 

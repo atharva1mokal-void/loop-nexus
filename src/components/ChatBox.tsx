@@ -1,46 +1,46 @@
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, User, Bot, Paperclip, Smile, MoreHorizontal } from 'lucide-react';
 
-interface Message {
-    id: string;
-    text: string;
-    sender: 'user' | 'other' | 'ai';
-    timestamp: Date;
-    author?: string;
-}
-
 interface ChatBoxProps {
     isWidget?: boolean;
 }
 
 export default function ChatBox({ isWidget = false }: ChatBoxProps) {
-    const [messages, setMessages] = useState<Message[]>([
-        {
-            id: '1',
-            text: "Welcome to the Nexus Team Chat. How's the progress on the dashboard?",
-            sender: 'other',
-            author: 'RedVoid',
-            timestamp: new Date(Date.now() - 1000 * 60 * 60)
-        },
-        {
-            id: '2',
-            text: "I've just finished the Neural Core integration.",
-            sender: 'user',
-            timestamp: new Date(Date.now() - 1000 * 60 * 30)
-        },
-        {
-            id: '3',
-            text: "Excellent. The AI analyzer is reporting healthy velocity.",
-            sender: 'ai',
-            author: 'NEXUS AI',
-            timestamp: new Date(Date.now() - 1000 * 60 * 5)
-        }
-    ]);
+    const [messages, setMessages] = useState<any[]>([]);
     const [inputValue, setInputValue] = useState('');
+    const [currentUser, setCurrentUser] = useState<any>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
+
+    // Initialize user
+    useEffect(() => {
+        const storedUser = localStorage.getItem('currentUser');
+        if (storedUser) {
+            setCurrentUser(JSON.parse(storedUser));
+        }
+    }, []);
+
+    // Fetch Messages
+    const fetchMessages = async () => {
+        try {
+            const res = await fetch('/api/chat');
+            if (res.ok) {
+                const data = await res.json();
+                setMessages(data.messages);
+            }
+        } catch (e) {
+            console.error('Failed to fetch messages');
+        }
+    };
+
+    useEffect(() => {
+        fetchMessages();
+        const interval = setInterval(fetchMessages, 3000); // Poll every 3s
+        return () => clearInterval(interval);
+    }, []);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -48,31 +48,31 @@ export default function ChatBox({ isWidget = false }: ChatBoxProps) {
         }
     }, [messages]);
 
-    const handleSend = () => {
+    const handleSend = async () => {
         if (!inputValue.trim()) return;
 
-        const newMessage: Message = {
-            id: Date.now().toString(),
+        const tempMessage = {
+            _id: Date.now().toString(),
             text: inputValue,
-            sender: 'user',
-            timestamp: new Date()
+            senderId: currentUser?.id,
+            senderName: currentUser?.username,
+            senderRole: currentUser?.role || 'user',
+            timestamp: new Date().toISOString()
         };
 
-        setMessages([...messages, newMessage]);
+        // Optimistic update
+        setMessages(prev => [...prev, tempMessage]);
         setInputValue('');
 
-        // Simulate AI response
-        if (inputValue.toLowerCase().includes('help') || inputValue.toLowerCase().includes('status')) {
-            setTimeout(() => {
-                const aiMessage: Message = {
-                    id: (Date.now() + 1).toString(),
-                    text: "I'm analyzing the latest project data. Everything seems to be on track. Need anything specific?",
-                    sender: 'ai',
-                    author: 'NEXUS AI',
-                    timestamp: new Date()
-                };
-                setMessages(prev => [...prev, aiMessage]);
-            }, 1000);
+        try {
+            await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: tempMessage.text })
+            });
+            fetchMessages(); // Sync with server
+        } catch (e) {
+            console.error('Failed to send message');
         }
     };
 
@@ -89,13 +89,10 @@ export default function ChatBox({ isWidget = false }: ChatBoxProps) {
                             <h2 className="text-xl font-bold tracking-tight">Team Communication</h2>
                             <div className="flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                                <span className="text-xs text-slate-400 font-medium">4 team members online</span>
+                                <span className="text-xs text-slate-400 font-medium">Online</span>
                             </div>
                         </div>
                     </div>
-                    <button className="p-2 hover:bg-white/5 rounded-xl transition-colors">
-                        <MoreHorizontal className="text-slate-400" />
-                    </button>
                 </div>
             )}
 
@@ -106,41 +103,43 @@ export default function ChatBox({ isWidget = false }: ChatBoxProps) {
                 style={{ maxHeight: isWidget ? '400px' : 'calc(100vh - 300px)' }}
             >
                 <AnimatePresence initial={false}>
-                    {messages.map((msg) => (
-                        <motion.div
-                            key={msg.id}
-                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            transition={{ duration: 0.3 }}
-                            className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                        >
-                            <div className={`flex gap-3 max-w-[80%] ${msg.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.sender === 'user' ? 'bg-blue-600' :
-                                        msg.sender === 'ai' ? 'bg-purple-600' : 'bg-slate-700'
-                                    }`}>
-                                    {msg.sender === 'user' ? <User size={14} /> : msg.sender === 'ai' ? <Bot size={14} /> : <User size={14} />}
-                                </div>
-                                <div className="space-y-1">
-                                    {(msg.author && msg.sender !== 'user') && (
-                                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">
-                                            {msg.author}
-                                        </div>
-                                    )}
-                                    <div className={`p-4 rounded-2xl text-sm leading-relaxed ${msg.sender === 'user'
+                    {messages.map((msg, idx) => {
+                        const isMe = currentUser && (msg.senderId === currentUser.id || msg.senderId === currentUser.userId || msg.senderId === currentUser._id);
+                        const isAI = msg.senderRole === 'ai';
+
+                        return (
+                            <motion.div
+                                key={msg._id || idx}
+                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                transition={{ duration: 0.3 }}
+                                className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
+                            >
+                                <div className={`flex gap-3 max-w-[80%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isMe ? 'bg-blue-600' :
+                                        isAI ? 'bg-purple-600' : 'bg-slate-700'
+                                        }`}>
+                                        {isMe ? <User size={14} /> : isAI ? <Bot size={14} /> : <User size={14} />}
+                                    </div>
+                                    <div className="space-y-1">
+                                        {!isMe && (
+                                            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">
+                                                {msg.senderName}
+                                            </div>
+                                        )}
+                                        <div className={`p-4 rounded-2xl text-sm leading-relaxed ${isMe
                                             ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/10'
-                                            : msg.sender === 'ai'
+                                            : isAI
                                                 ? 'bg-purple-900/30 border border-purple-500/20 text-purple-100'
                                                 : 'bg-white/5 border border-white/10 text-slate-200'
-                                        }`}>
-                                        {msg.text}
-                                    </div>
-                                    <div className={`text-[10px] text-slate-500 px-1 ${msg.sender === 'user' ? 'text-right' : 'text-left'}`}>
-                                        {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            }`}>
+                                            {msg.text}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </motion.div>
-                    ))}
+                            </motion.div>
+                        );
+                    })}
                 </AnimatePresence>
             </div>
 

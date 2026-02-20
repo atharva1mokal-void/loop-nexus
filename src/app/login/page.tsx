@@ -24,40 +24,32 @@ function LoginForm() {
         e.preventDefault();
         setError('');
 
-        let session = null;
-        if (username === 'RedVoid' && password === 'lead01') {
-            session = {
-                userId: 'admin-01',
-                username: 'RedVoid',
-                email: 'admin@nexus.com',
-                role: 'admin',
-                fullName: 'RedVoid Administrator',
-                avatar: null
-            };
-        } else if (username === 'Nexus26' && password === 'Team01') {
-            session = {
-                userId: 'team-01',
-                username: 'Nexus26',
-                email: 'team@nexus.com',
-                role: 'team',
-                fullName: 'Nexus Team',
-                avatar: null
-            };
-        }
+        try {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
 
-        if (session) {
-            localStorage.setItem('currentUser', JSON.stringify(session));
-            document.cookie = `session=${JSON.stringify(session)}; path=/; max-age=86400`;
+            const data = await res.json();
 
-            if (session.role === 'admin') {
+            if (!res.ok) {
+                setError(data.error || 'Login failed');
+                return;
+            }
+
+            // Success
+            // Store basic info for client-side UI usage if needed, but rely on cookie for auth
+            localStorage.setItem('currentUser', JSON.stringify(data.user));
+
+            if (data.user.role === 'admin') {
                 router.push('/admin');
             } else {
                 router.push('/');
             }
-            return;
+        } catch (err) {
+            setError('Connection error. Please try again.');
         }
-
-        setError('Invalid credentials');
     };
 
     return (

@@ -15,7 +15,8 @@ export function ProjectStatsEditor({ project }: ProjectStatsEditorProps) {
     const [stats, setStats] = useState(project.stats || {
         efficiency: 85,
         codeQuality: 90,
-        testCoverage: 50
+        testCoverage: 50,
+        healthScore: 88
     });
 
     const handleSave = async () => {
@@ -90,6 +91,17 @@ export function ProjectStatsEditor({ project }: ProjectStatsEditorProps) {
                                         value={stats.testCoverage}
                                         onChange={(e) => setStats({ ...stats, testCoverage: parseInt(e.target.value) })}
                                         className="w-full mt-1 accent-[var(--neon-cyan)]"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-[var(--text-secondary)] uppercase flex justify-between">
+                                        Health Score <span>{stats.healthScore}%</span>
+                                    </label>
+                                    <input
+                                        type="range" min="0" max="100"
+                                        value={stats.healthScore}
+                                        onChange={(e) => setStats({ ...stats, healthScore: parseInt(e.target.value) })}
+                                        className="w-full mt-1 accent-[var(--neon-purple)]"
                                     />
                                 </div>
                             </div>

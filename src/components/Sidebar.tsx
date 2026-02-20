@@ -1,17 +1,19 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Home, Activity, Layers, Settings, ChevronRight, Zap, Target, LogOut, MessageSquare } from 'lucide-react';
+import { Home, Activity, Layers, Settings, ChevronRight, Zap, Target, LogOut, MessageSquare, Bell } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 const menuItems = [
-    { icon: Home, label: 'Dashboard', href: '/' },
-    { icon: Activity, label: 'Insights', href: '/insights' },
-    { icon: Layers, label: 'Projects', href: '/projects' },
-    { icon: MessageSquare, label: 'Team Chat', href: '/chat' },
+    { icon: Home, label: 'Command Center', href: '/' },
+    { icon: Zap, label: 'Sprint Hub', href: '/sprint' },
+    { icon: MessageSquare, label: 'Context Thread', href: '/communication' },
+    { icon: Activity, label: 'Team Radar', href: '/team' },
+    { icon: Bell, label: 'Global Alerts', href: '/notifications' },
 ];
+
 
 export function Sidebar() {
     const [isOpen, setIsOpen] = useState(true);

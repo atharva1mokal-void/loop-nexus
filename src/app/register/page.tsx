@@ -35,31 +35,36 @@ export default function RegisterPage() {
 
         setLoading(true);
 
-        // In real app, call server action
-        // For demo, store in localStorage
-        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        try {
+            const res = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fullName: formData.fullName,
+                    username: formData.username,
+                    email: formData.email,
+                    password: formData.password
+                    // Role is defaulted to client in API for safety, or we can send it
+                })
+            });
 
-        if (users.find((u: any) => u.email === formData.email)) {
-            setError('Email already registered');
+            const data = await res.json();
+
+            if (!res.ok) {
+                setError(data.error || 'Registration failed');
+                setLoading(false);
+                return;
+            }
+
+            // Success
+            setTimeout(() => {
+                router.push('/login?registered=true');
+            }, 500);
+
+        } catch (err) {
+            setError('Connection error. Please try again.');
             setLoading(false);
-            return;
         }
-
-        const newUser = {
-            id: Math.random().toString(36).substr(2, 9),
-            ...formData,
-            password: `hashed_${formData.password}`, // Simplified hashing
-            avatar: '',
-            createdAt: new Date().toISOString(),
-            isActive: true
-        };
-
-        users.push(newUser);
-        localStorage.setItem('users', JSON.stringify(users));
-
-        setTimeout(() => {
-            router.push('/login?registered=true');
-        }, 500);
     };
 
     return (

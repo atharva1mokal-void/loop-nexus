@@ -4,107 +4,45 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createProject, removeProject } from '../actions';
 import { Project } from '@/lib/types';
-import { Trash2, Plus, Terminal, Lock, LogOut } from 'lucide-react';
+import { Trash2, Plus, Terminal, LogOut, Database, RefreshCw } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface AdminClientProps {
     initialProjects: Project[];
 }
 
 export default function AdminClient({ initialProjects }: AdminClientProps) {
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
+    const router = useRouter();
+    const [isResetting, setIsResetting] = useState(false);
 
-    const handleLogin = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (username === 'RedVoid' && password === 'Lead@01') {
-            setIsAuthenticated(true);
-            setError('');
-        } else {
-            setError('Access Denied: Invalid Credentials');
-        }
+    const handleLogout = async () => {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        localStorage.removeItem('currentUser');
+        router.push('/login');
     };
 
-    if (!isAuthenticated) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-[#050505] text-white p-4">
-                <div className="absolute inset-0 overflow-hidden z-0 pointer-events-none">
-                    <div className="absolute top-[20%] left-[20%] w-96 h-96 bg-[var(--neon-purple)] rounded-full mix-blend-screen filter blur-[100px] opacity-20 animate-pulse" />
-                    <div className="absolute bottom-[20%] right-[20%] w-96 h-96 bg-[var(--neon-blue)] rounded-full mix-blend-screen filter blur-[100px] opacity-20 animate-pulse" />
-                </div>
+    const handleResetData = async () => {
+        if (!confirm('WARNING: This will delete ALL system notification data. Are you sure?')) return;
 
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="w-full max-w-md p-8 glass-panel rounded-2xl border border-[var(--glass-border)] relative z-10"
-                >
-                    <div className="flex items-center gap-3 mb-8">
-                        <div className="p-3 bg-[var(--surface-2)] rounded-xl border border-[var(--glass-border)]">
-                            <Lock className="w-6 h-6 text-[var(--neon-purple)]" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-bold">Admin Portal</h1>
-                            <p className="text-[var(--text-secondary)] text-sm">Secure Access Required</p>
-                        </div>
-                    </div>
-
-                    <form onSubmit={handleLogin} className="space-y-4">
-                        <div className="space-y-1">
-                            <label className="text-xs font-mono text-[var(--text-secondary)] uppercase tracking-wider">Identity</label>
-                            <input
-                                type="text"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                className="w-full bg-[var(--surface-1)] border border-[var(--glass-border)] rounded-lg p-3 text-white outline-none focus:border-[var(--neon-purple)] focus:ring-1 focus:ring-[var(--neon-purple)] transition-all font-mono"
-                                placeholder="Username"
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-mono text-[var(--text-secondary)] uppercase tracking-wider">Passcode</label>
-                            <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full bg-[var(--surface-1)] border border-[var(--glass-border)] rounded-lg p-3 text-white outline-none focus:border-[var(--neon-purple)] focus:ring-1 focus:ring-[var(--neon-purple)] transition-all font-mono"
-                                placeholder="••••••••"
-                            />
-                        </div>
-
-                        {error && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="text-red-400 text-sm bg-red-500/10 p-3 rounded-lg border border-red-500/20 flex items-center justify-center font-mono"
-                            >
-                                {error}
-                            </motion.div>
-                        )}
-
-                        <button
-                            type="submit"
-                            className="w-full bg-gradient-to-r from-[var(--neon-purple)] to-[var(--neon-blue)] text-white font-bold py-3 rounded-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2 group"
-                        >
-                            <Terminal className="w-4 h-4" />
-                            <span>Establish Connection</span>
-                        </button>
-                    </form>
-                </motion.div>
-            </div>
-        );
-    }
-
-    return (
-        <Dashboard projects={initialProjects} onLogout={() => setIsAuthenticated(false)} />
-    );
-}
-
-function Dashboard({ projects, onLogout }: { projects: Project[], onLogout: () => void }) {
-    // We rely on Props for initial data, but since we are modifying data, 
-    // we should ideally optimistic update or just rely on router refresh (handled by server actions).
-    // But props won't update automatically without a refresh unless we use router.refresh().
-    // Server actions do revalidatePath, which refreshes the server component, which passes new props!
-    // So this IS reactive.
+        setIsResetting(true);
+        try {
+            const res = await fetch('/api/admin/reset', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target: 'all' })
+            });
+            if (res.ok) {
+                alert('System data reset successfully.');
+                router.refresh();
+            } else {
+                alert('Reset failed. Ensure you are an Admin.');
+            }
+        } catch (e) {
+            alert('Error resetting data');
+        } finally {
+            setIsResetting(false);
+        }
+    };
 
     return (
         <div className="min-h-screen bg-[#050505] p-8">
@@ -115,13 +53,23 @@ function Dashboard({ projects, onLogout }: { projects: Project[], onLogout: () =
                     </h1>
                     <p className="text-[var(--text-secondary)]">Manage system resources and project directives.</p>
                 </div>
-                <button
-                    onClick={onLogout}
-                    className="flex items-center gap-2 px-4 py-2 bg-[var(--surface-1)] hover:bg-[var(--surface-2)] text-[var(--text-secondary)] rounded-lg transition-colors border border-[var(--glass-border)]"
-                >
-                    <LogOut className="w-4 h-4" />
-                    Disconnect
-                </button>
+                <div className="flex gap-3">
+                    <button
+                        onClick={handleResetData}
+                        disabled={isResetting}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors border border-red-500/20"
+                    >
+                        {isResetting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
+                        Reset Data
+                    </button>
+                    <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-2 px-4 py-2 bg-[var(--surface-1)] hover:bg-[var(--surface-2)] text-[var(--text-secondary)] rounded-lg transition-colors border border-[var(--glass-border)]"
+                    >
+                        <LogOut className="w-4 h-4" />
+                        Disconnect
+                    </button>
+                </div>
             </header>
 
             <main className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -135,7 +83,7 @@ function Dashboard({ projects, onLogout }: { projects: Project[], onLogout: () =
 
                         <form action={createProject} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1 uppercase">Project Codenam</label>
+                                <label className="block text-xs font-mono text-[var(--text-secondary)] mb-1 uppercase">Project Codename</label>
                                 <input name="name" required className="w-full bg-[var(--surface-2)] border border-[var(--glass-border)] rounded-lg p-3 text-white outline-none focus:border-[var(--neon-cyan)]" placeholder="e.g. TITAN_PROTOCOL" />
                             </div>
                             <div>
@@ -178,7 +126,7 @@ function Dashboard({ projects, onLogout }: { projects: Project[], onLogout: () =
                     </h2>
 
                     <div className="space-y-4">
-                        {projects.map((project) => (
+                        {initialProjects.map((project) => (
                             <motion.div
                                 key={project.id}
                                 layout
@@ -223,7 +171,7 @@ function Dashboard({ projects, onLogout }: { projects: Project[], onLogout: () =
                             </motion.div>
                         ))}
 
-                        {projects.length === 0 && (
+                        {initialProjects.length === 0 && (
                             <div className="text-center p-12 glass-panel rounded-xl border border-[var(--glass-border)] border-dashed">
                                 <p className="text-[var(--text-secondary)]">System Idle. No active projects detected.</p>
                             </div>
@@ -234,4 +182,6 @@ function Dashboard({ projects, onLogout }: { projects: Project[], onLogout: () =
         </div>
     );
 }
+
+// Removing legacy Dashboard component and merging it above
 
